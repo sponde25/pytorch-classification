@@ -3,6 +3,7 @@ from __future__ import absolute_import
 """The models subpackage contains definitions for the following model for CIFAR10/CIFAR100
 architectures:
 
+- `LeNet-5` _
 -  `AlexNet`_
 -  `VGG`_
 -  `ResNet`_
@@ -68,3 +69,4 @@ from .resnext import *
 from .wrn import *
 from .preresnet import *
 from .densenet import *
+from .lenet5 import *
