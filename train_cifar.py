@@ -74,9 +74,9 @@ def train(args, model, device, train_loader, optimizer, epoch):
         if batch_idx % args.log_interval == 0:
             total_data_size = (batch_idx + 1) * batch_size
             accuracy = 100. * total_correct / total_data_size
-            # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.0f}/{} ({:.2f}%)'.format(
-            #       epoch, total_data_size, epoch_size, 100. * (batch_idx + 1) / num_iters_in_epoch,
-            #       loss, total_correct, total_data_size, accuracy))
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.0f}/{} ({:.2f}%)'.format(
+                   epoch, total_data_size, epoch_size, 100. * (batch_idx + 1) / num_iters_in_epoch,
+                   loss, total_correct, total_data_size, accuracy))
 
             # write to log
             log = 'epoch,{},iteration,{},accuracy,{},loss,{}'.format(
@@ -150,7 +150,8 @@ def test(args, model, device, test_loader, optimzer=None):
     test_loss /= len(test_loader.dataset)
     test_accuracy = 100. * correct / len(test_loader.dataset)
 
-
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {:.0f}/{} ({:.2f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset), test_accuracy))
 
     return test_accuracy, test_loss
 
@@ -223,7 +224,7 @@ def main():
     parser.add_argument('--vogn_save_array', action='store_true', default=False,
                         help='for saving the arrays of VOGN')
     # Other
-    parser.add_argument('--save_model', action='store_true', default=False,
+    parser.add_argument('--save_model', action='store_true', default=True,
                         help='for saving the current model')
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -374,7 +375,7 @@ def main():
 
     if args.save_model:
         path_model = os.path.join(args.out, '{}_{}.pt'.format(args.dataset, args.arch))
-        path_optim = os.path.join(os.path.join(args.out, '{}_{}.opt'.format(args.dataset, args.arch)))
+        path_optim = os.path.join(args.out, '{}_{}.opt'.format(args.dataset, args.arch))
         torch.save(model.state_dict(), path_model)
         torch.save(optimizer.state, path_optim)
 
