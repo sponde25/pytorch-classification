@@ -168,6 +168,8 @@ def main():
                         help='model architecture: ' +
                              ' | '.join(model_names) +
                              ' (default: resnet18)')
+    parser.add_argument('--input_dim', type=int, default=32, help='Input Dimensions')
+    parser.add_argument('--channels', type=int, default=3, help='Input Channels')
     parser.add_argument('--depth', type=int, default=20, help='Model depth.')
     parser.add_argument('--block-name', type=str, default='BasicBlock',
                         help='the building block for Resnet and Preresnet: BasicBlock, Bottleneck (default: Basicblock for cifar10/cifar100)')
@@ -284,6 +286,12 @@ def main():
             depth=args.depth,
             block_name=args.block_name,
         )
+    elif args.arch.startswith('lenet'):
+        model = models.__dict__[args.arch](
+            input_channels = args.channels,
+            dims = args.input_dim,
+            num_classes = num_classes
+        )
     else:
         model = models.__dict__[args.arch](num_classes=num_classes)
     model = model.to(device)
@@ -320,6 +328,7 @@ def main():
     print('optimizer: {}'.format(args.optimizer))
     print('learning rate: {}'.format(args.lr))
     print('learning rate scheduler: {}'.format(args.lr_scheduler))
+    print('Log File: {}'.format(os.path.join(args.out, args.log_file_name)))
     if args.lr_scheduler == LR_SCHEDULE_EXPONENTIAL:
         print('exponential decay rate: {}'.format(args.exponential_decay_rate))
     if args.optimizer in [OPTIMIZER_ADAM, OPTIMIZER_VOGN]:
