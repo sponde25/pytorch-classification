@@ -143,8 +143,6 @@ def test(args, model, device, test_loader, optimzer=None):
                 loss = [F.cross_entropy(output, target, reduction='sum').item() for output in outputs]
                 test_loss += np.mean(loss)
                 correct += softmax_predictive_accuracy(outputs, target)
-                loss = [F.cross_entropy(output, target, reduction='sum').item() for output in outputs]
-                test_loss += np.mean(loss)
 
             else:
                 output = model(data)
