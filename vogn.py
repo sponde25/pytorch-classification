@@ -15,6 +15,68 @@ def update_input(self, input, output):
     self.input = input[0].data
     self.output = output
 
+def update_grad(self, grad_input, grad_output):
+    module = self
+    N=1
+    ggn = []
+    G = grad_output[0].clone().detach()
+    A = module.input.clone().detach()
+    M = A.shape[0]
+    A = torch.cat([A] * N)
+    G *= M
+    G2 = torch.mul(G, G)
+
+    if isinstance(module, nn.BatchNorm1d):
+        A2 = torch.mul(A, A)
+        #grad.append(torch.einsum('ij->j', torch.mul(G, A)))
+        ggn.append(torch.einsum('ij->j', torch.mul(G2, A2)).div(M))
+        if module.bias is not None:
+            #grad.append(torch.einsum('ij->j', G))
+            ggn.append(torch.einsum('ij->j', G2).div(M))
+
+    if isinstance(module, nn.BatchNorm2d):
+        A2 = torch.mul(A, A)
+        #grad.append(torch.einsum('ijkl->j', torch.mul(G, A)))
+        ggn.append(torch.einsum('ijkl->j', torch.mul(G2, A2)).div(M))
+        if module.bias is not None:
+            #grad.append(torch.einsum('ijkl->j', G))
+            ggn.append(torch.einsum('ijkl->j', G2).div(M))
+
+    if isinstance(module, nn.Linear):
+        A2 = torch.mul(A, A)
+        #grad.append(torch.einsum('ij,ik->jk', G, A))
+        ggn.append(torch.einsum('ij, ik->jk', G2, A2).div(M))
+        if module.bias is not None:
+            # A = torch.ones((M * N, 1), device=A.device)
+            #grad.append(torch.einsum('ij->j', G))
+            ggn.append(torch.einsum('ij->j', G2).div(M))
+
+    if isinstance(module, nn.Conv2d):
+        A = F.unfold(A, kernel_size=module.kernel_size, dilation=module.dilation, padding=module.padding,
+                     stride=module.stride)
+        A2 = torch.mul(A, A)
+        _, k, hw = A.shape
+        _, c, _, _ = G.shape
+        '''G = G.view(M, c, -1)
+        mean = torch.zeros((c, k), device=A.device)
+        mean.addbmm_(G, A)'''
+        _, c, _, _ = G.shape
+        G = G.view(M * N, c, -1)
+        G2 = G2.view(M * N, c, -1)
+        #grad.append(torch.einsum('ijl,ikl->jk', G, A))
+        '''mean = torch.zeros((c, k), device=A.device)
+        mean.addbmm_(torch.mul(G, G), torch.mul(A, A))'''
+        ggn.append(torch.einsum('ijl,ikl->jk', G2, A2).div(M))
+        if module.bias is not None:
+            # A = torch.ones((M * N, 1, hw), device=A.device)
+            '''mean = torch.zeros((c, 1), device=A.device)
+            mean.addbmm_(G, A)'''
+            #grad.append(torch.einsum('ijl->j', G))
+            '''mean = torch.zeros((c, 1), device=A.device)
+            mean.addbmm_(torch.mul(G, G), torch.mul(A, A))'''
+            ggn.append(torch.einsum('ijl->j', G2).div(M))
+
+    self.ggn = ggn
 
 class VOGN(Optimizer):
     """Implements the VOGN algorithm. It uses the Generalized Gauss Newton (GGN)
@@ -60,7 +122,7 @@ class VOGN(Optimizer):
         super(type(self), self).__init__(model.parameters(), defaults)
         for module in self.train_modules:
             module.register_forward_hook(update_input)
-
+            module.register_backward_hook(update_grad)
         p = parameters_to_vector(self.param_groups[0]['params'])
         # mean parameter of variational distribution.
         self.state['mu'] = p.clone().detach()
@@ -107,75 +169,19 @@ class VOGN(Optimizer):
             loss, preds = closure()
             loss_list.append(loss)
             pred_list.append(preds)
-            linear_combinations = []
-            # Store the pre-activations
-            for module in self.train_modules:
-                linear_combinations.append(module.output)
 
             # Do the Backward pass for gradients and square gradients
-            linear_grad = torch.autograd.grad(loss, linear_combinations)
-            ggn = []
+
+
             grad = []
-            N = 1
-            for i, module in enumerate(self.train_modules):
-                G = linear_grad[i]
-                A = module.input.clone().detach()
-                M = A.shape[0]
-                A = torch.cat([A] * N)
-                G *= M
-                G2 = torch.mul(G, G)
+            for param in parameters:
+                grad.append(param.grad.data)
+            ggn = []
+            for module in self.train_modules:
+                ggn.extend(module.ggn)
 
-                if isinstance(module, nn.BatchNorm1d):
-                    A2 = torch.mul(A, A)
-                    grad.append(torch.einsum('ij->j', torch.mul(G, A)))
-                    ggn.append(torch.einsum('ij->j', torch.mul(G2, A2)))
-                    if module.bias is not None:
-                        grad.append(torch.einsum('ij->j', G))
-                        ggn.append(torch.einsum('ij->j', G2))
-
-                if isinstance(module, nn.BatchNorm2d):
-                    A2 = torch.mul(A, A)
-                    grad.append(torch.einsum('ijkl->j', torch.mul(G, A)))
-                    ggn.append(torch.einsum('ijkl->j', torch.mul(G2, A2)))
-                    if module.bias is not None:
-                        grad.append(torch.einsum('ijkl->j', G))
-                        ggn.append(torch.einsum('ijkl->j', G2))
-
-                if isinstance(module, nn.Linear):
-                    A2 = torch.mul(A, A)
-                    grad.append(torch.einsum('ij,ik->jk', G, A))
-                    ggn.append(torch.einsum('ij, ik->jk', G2, A2))
-                    if module.bias is not None:
-                        # A = torch.ones((M * N, 1), device=A.device)
-                        grad.append(torch.einsum('ij->j', G))
-                        ggn.append(torch.einsum('ij->j', G2))
-
-                if isinstance(module, nn.Conv2d):
-                    A = F.unfold(A, kernel_size=module.kernel_size, dilation=module.dilation, padding=module.padding,
-                                 stride=module.stride)
-                    A2 = torch.mul(A, A)
-                    _, k, hw = A.shape
-                    _, c, _, _ = G.shape
-                    '''G = G.view(M, c, -1)
-                    mean = torch.zeros((c, k), device=A.device)
-                    mean.addbmm_(G, A)'''
-                    _, c, _, _ = G.shape
-                    G = G.view(M * N, c, -1)
-                    G2 = G2.view(M * N, c, -1)
-                    grad.append(torch.einsum('ijl,ikl->jk', G, A))
-                    '''mean = torch.zeros((c, k), device=A.device)
-                    mean.addbmm_(torch.mul(G, G), torch.mul(A, A))'''
-                    ggn.append(torch.einsum('ijl,ikl->jk', G2, A2))
-                    if module.bias is not None:
-                        # A = torch.ones((M * N, 1, hw), device=A.device)
-                        '''mean = torch.zeros((c, 1), device=A.device)
-                        mean.addbmm_(G, A)'''
-                        grad.append(torch.einsum('ijl->j', G))
-                        '''mean = torch.zeros((c, 1), device=A.device)
-                        mean.addbmm_(torch.mul(G, G), torch.mul(A, A))'''
-                        ggn.append(torch.einsum('ijl->j', G2))
-            grad_vec = parameters_to_vector(grad).div(M).detach()
-            ggn = parameters_to_vector(ggn).div(M).detach()
+            grad_vec = parameters_to_vector(grad).detach()
+            ggn = parameters_to_vector(ggn).detach()
 
             if mu_grad_hat is None:
                 mu_grad_hat = grad_vec
@@ -192,7 +198,6 @@ class VOGN(Optimizer):
         self.state['mu_grad_avg'].mul_(defaults['beta1']).add_(mu_grad_hat.mul(1 - defaults['beta1']))
         # Get the mean loss over the number of samples
         loss = torch.mean(torch.stack(loss_list))
-        #preds = torch.mean(torch.stack(pred_list))
         # Update precision matrix
         Precision = Precision.mul(defaults['beta2']) + GGN_hat.add(defaults['prior_prec']).mul(1 - defaults['beta2'])
         self.state['Precision'] = Precision

@@ -33,7 +33,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
 
     total_correct = 0
-    loss = None
+    loss = 0.
     batch_size = args.batch_size
     epoch_size = len(train_loader.dataset)
     num_iters_in_epoch = len(train_loader)
@@ -41,12 +41,13 @@ def train(args, model, device, train_loader, optimizer, epoch):
 
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
-
+        #print(optimizer.state['mu'].mean(), optimizer.state['Precision'].mean())
         if isinstance(optimizer, VOGN):
             def closure():
                 optimizer.zero_grad()
                 output = model(data)
                 loss = F.cross_entropy(output, target)
+                loss.backward()
                 #pred = torch.softmax(output, dim=1)
                 #correct = pred.eq(target.view_as(pred)).sum().item()
                 return loss, output
@@ -62,7 +63,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
 
         # update params
         _loss, _pred = optimizer.step(closure)
-        loss = _loss.item()
+        loss += _loss.detach().item()
         if isinstance(optimizer, VOGN):
             total_correct += softmax_predictive_accuracy(_pred, target)
         else:
@@ -76,7 +77,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
             accuracy = 100. * total_correct / total_data_size
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.0f}/{} ({:.2f}%)'.format(
                    epoch, total_data_size, epoch_size, 100. * (batch_idx + 1) / num_iters_in_epoch,
-                   loss, total_correct, total_data_size, accuracy))
+                   loss / (batch_idx+1), total_correct, total_data_size, accuracy))
 
             # write to log
             log = 'epoch,{},iteration,{},accuracy,{},loss,{}'.format(
@@ -139,6 +140,8 @@ def test(args, model, device, test_loader, optimzer=None):
                     raw_noises.append(torch.normal(mean=optimzer.state['mu'], std=1.0))
                 outputs = optimzer.get_mc_predictions(model, data,
                                                       raw_noises=raw_noises)
+                loss = [F.cross_entropy(output, target, reduction='sum').item() for output in outputs]
+                test_loss += np.mean(loss)
                 correct += softmax_predictive_accuracy(outputs, target)
 
             else:
@@ -252,8 +255,8 @@ def main():
     # Load Dataset
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     data = Dataset(args.dataset)
-    train_loader = data.get_train_loader(batch_size=args.batch_size, shuffle=True)
-    test_loader = data.get_test_loader(batch_size=args.test_batch_size, shuffle=True)
+    train_loader = data.get_train_loader(batch_size=args.batch_size, shuffle=False)
+    test_loader = data.get_test_loader(batch_size=args.test_batch_size, shuffle=False)
     num_classes = 10
     if args.dataset == 'cifar100':
         num_classes = 100
@@ -346,9 +349,6 @@ def main():
     print('device: {}'.format(device))
     print('random seed: {}'.format(args.seed))
     print('===========================')
-
-    # Copy this file to args.out
-    shutil.copy(os.path.realpath(__file__), args.out)
 
     # Training
     for epoch in range(1, args.epochs + 1):
