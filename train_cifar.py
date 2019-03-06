@@ -136,10 +136,12 @@ def test(args, model, device, test_loader, optimzer=None):
             if optimzer is not None and isinstance(optimzer, VOGN):
                 raw_noises = []
                 for mc_sample in range(args.test_mc_samples):
-                    raw_noises.append(torch.normal(mean=optimzer.state['mu'], std=1.0))
+                    raw_noises.append(torch.normal(mean=torch.zeros_like(optimzer.state['mu']), std=1.0))
                 outputs = optimzer.get_mc_predictions(model, data,
                                                       raw_noises=raw_noises)
                 correct += softmax_predictive_accuracy(outputs, target)
+                loss = [F.cross_entropy(output, target, reduction='sum').item() for output in outputs]
+                test_loss += np.mean(loss)
 
             else:
                 output = model(data)
@@ -346,9 +348,6 @@ def main():
     print('device: {}'.format(device))
     print('random seed: {}'.format(args.seed))
     print('===========================')
-
-    # Copy this file to args.out
-    shutil.copy(os.path.realpath(__file__), args.out)
 
     # Training
     for epoch in range(1, args.epochs + 1):

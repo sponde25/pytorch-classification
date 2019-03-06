@@ -8,12 +8,14 @@ class LeNet5(nn.Module):
         super(type(self), self).__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(input_channels, 6, 5),
+            nn.BatchNorm2d(6),
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
         dims = int((dims-4)/2)
         self.layer2 = nn.Sequential(
             nn.Conv2d(6, 16, 5),
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
