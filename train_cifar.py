@@ -73,6 +73,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
         else:
             _pred = _pred.argmax(dim=1, keepdim=True)
             total_correct += _pred.eq(target.view_as(_pred)).sum().item()
+            loss += _loss * data.shape[0]
 
         iteration = base_num_iter + batch_idx + 1
 
@@ -152,13 +153,13 @@ def test(args, model, device, test_loader, optimzer=None):
                 output = model(data)
                 test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
                 pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-                correct += pred.eq(target.view_as(pred)).sum().item()
+                total_correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
-    test_accuracy = 100. * correct / len(test_loader.dataset)
+    test_accuracy = 100. * total_correct / len(test_loader.dataset)
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {:.0f}/{} ({:.2f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset), test_accuracy))
+        test_loss, total_correct, len(test_loader.dataset), test_accuracy))
 
     return test_accuracy, test_loss
 
