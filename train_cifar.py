@@ -19,13 +19,17 @@ OPTIMIZER_SGD = 'sgd'
 LR_SCHEDULE_CONSTANT = 'constant'
 LR_SCHEDULE_EXPONENTIAL = 'exponential'
 
-def softmax_predictive_accuracy(logits_list, y):
+def softmax_predictive_accuracy(logits_list, y, ret_loss = False):
     probs_list = [torch.softmax(logits, dim=1) for logits in logits_list]
     probs_tensor = torch.stack(probs_list, dim = 2)
     probs = torch.mean(probs_tensor, dim=2)
+    if ret_loss:
+        loss = F.cross_entropy(probs, y, reduction='sum').item()
     _, pred_class = torch.max(probs, 1)
     correct = (pred_class == y)
     correct = correct.float().sum()
+    if ret_loss:
+        return correct, loss
     return correct
 
 
@@ -33,7 +37,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
 
     total_correct = 0
-    loss = None
+    loss = 0.
     batch_size = args.batch_size
     epoch_size = len(train_loader.dataset)
     num_iters_in_epoch = len(train_loader)
@@ -62,9 +66,10 @@ def train(args, model, device, train_loader, optimizer, epoch):
 
         # update params
         _loss, _pred = optimizer.step(closure)
-        loss = _loss.item()
         if isinstance(optimizer, VOGN):
-            total_correct += softmax_predictive_accuracy(_pred, target)
+            c, l = softmax_predictive_accuracy(_pred, target, ret_loss=True)
+            total_correct += c
+            loss += l
         else:
             _pred = _pred.argmax(dim=1, keepdim=True)
             total_correct += _pred.eq(target.view_as(_pred)).sum().item()
@@ -76,11 +81,11 @@ def train(args, model, device, train_loader, optimizer, epoch):
             accuracy = 100. * total_correct / total_data_size
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.0f}/{} ({:.2f}%)'.format(
                    epoch, total_data_size, epoch_size, 100. * (batch_idx + 1) / num_iters_in_epoch,
-                   loss, total_correct, total_data_size, accuracy))
+                   loss/total_data_size, total_correct, total_data_size, accuracy))
 
             # write to log
             log = 'epoch,{},iteration,{},accuracy,{},loss,{}'.format(
-               epoch, iteration, accuracy, loss
+               epoch, iteration, accuracy, loss/total_data_size
             )
             path = os.path.join(args.out, args.log_file_name)
             with open(path, 'a') as f:
@@ -119,14 +124,14 @@ def train(args, model, device, train_loader, optimizer, epoch):
         #         np.save(path, ggn)
 
     accuracy = 100. * total_correct / epoch_size
-
+    loss /= epoch_size
     return accuracy, loss
 
 
 def test(args, model, device, test_loader, optimzer=None):
     model.eval()
     test_loss = 0
-    correct = 0
+    total_correct = 0
 
     with torch.no_grad():
         for data, target in test_loader:
@@ -139,9 +144,9 @@ def test(args, model, device, test_loader, optimzer=None):
                     raw_noises.append(torch.normal(mean=torch.zeros_like(optimzer.state['mu']), std=1.0))
                 outputs = optimzer.get_mc_predictions(model, data,
                                                       raw_noises=raw_noises)
-                correct += softmax_predictive_accuracy(outputs, target)
-                loss = [F.cross_entropy(output, target, reduction='sum').item() for output in outputs]
-                test_loss += np.mean(loss)
+                correct, loss = softmax_predictive_accuracy(outputs, target, ret_loss=True)
+                total_correct += correct
+                test_loss += loss
 
             else:
                 output = model(data)
