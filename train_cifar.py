@@ -379,8 +379,8 @@ def main():
             f.write(log + '\n')
 
     if args.save_model:
-        path_model = os.path.join(args.out, '{}_{}.pt'.format(args.dataset, args.arch))
-        path_optim = os.path.join(args.out, '{}_{}.opt'.format(args.dataset, args.arch))
+        path_model = os.path.join(args.out, '{}.pt'.format(args.log_file_name))
+        path_optim = os.path.join(args.out, '{}.opt'.format(args.log_file_name))
         torch.save(model.state_dict(), path_model)
         torch.save(optimizer.state, path_optim)
 
