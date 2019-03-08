@@ -93,25 +93,24 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 f.write(log + '\n')
 
 
-        # if isinstance(optimizer, VOGN) and batch_idx % args.vogn_log_interval == 0:
-        #     mu = optimizer.state['mu']
+        if isinstance(optimizer, VOGN) and batch_idx % args.vogn_log_interval == 0:
+             mu = optimizer.state['mu']
         #     mu_pre = getattr(optimizer, 'mu_pre')
         #     mu_upd_norm = mu.sub(mu_pre).norm().item()
-        #     prec = optimizer.state['Precision']
+             prec = optimizer.state['Precision']
         #     ggn = optimizer.state['GGN']
         #
         #     # write to log.vogn
-        #     log = 'epoch,{},iteration,{},lr,{},' \
-        #           'mu_mean,{},mu_std,{},mu_norm,{},' \
-        #           'prec_mean,{},prec_std,{},prec_norm,{},' \
-        #           'ggn_mean,{},ggn_std,{},ggn_norm,{},mu_upd_norm,{}'.format(
-        #            epoch, iteration, lr,
-        #            mu.mean(), mu.std(), mu.norm().item(),
-        #            prec.mean(), prec.std(), prec.norm().item(),
-        #            ggn.mean(), ggn.std(), ggn.norm().item(), mu_upd_norm)
-        #     path = os.path.join(args.out, args.vogn_log_file_name)
-        #     with open(path, 'a') as f:
-        #         f.write(log + '\n')
+             log = 'epoch,{},iteration,{},lr,{},' \
+                   'mu_mean,{},mu_std,{},' \
+                   'prec_mean,{},prec_std,{},' \
+                   ''.format(
+                    epoch, iteration, optimizer.param_groups[0]['lr'],
+                    mu.mean(), mu.std(),
+                    prec.mean(), prec.std())
+             path = os.path.join(args.out, args.vogn_log_file_name)
+             with open(path, 'a') as f:
+                 f.write(log + '\n')
         #
         #     if args.vogn_save_array:
         #         dirname = os.path.join(args.out, 'data')
@@ -202,6 +201,10 @@ def main():
                         help='learning rate')
     parser.add_argument('--lr_scheduler', type=str, default='constant',
                         help='learning rate scheduler')
+    parser.add_argument('--clip_lr', action='store_true', default=False,
+                        help='Set the min lr with exponential decay')
+    parser.add_argument('--min_lr', type=float, default=0.001,
+                        help='Min. learning rate for exponential or cyclic decay')
     parser.add_argument('--exponential_decay_rate', type=float, default=0.9,
                         help='multiplicative factor of learning rate decay')
     parser.add_argument('--beta1', type=float, default=0.999,
@@ -232,7 +235,7 @@ def main():
     parser.add_argument('--vogn_save_array', action='store_true', default=False,
                         help='for saving the arrays of VOGN')
     # Other
-    parser.add_argument('--save_model', action='store_true', default=True,
+    parser.add_argument('--save_model', action='store_true', default=False,
                         help='for saving the current model')
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -361,6 +364,8 @@ def main():
         # update learning rate
         if scheduler is not None:
             scheduler.step(epoch - 1)
+            if args.clip_lr and optimizer.param_groups[0]['lr'] < args.min_lr:
+                optimizer.param_groups[0]['lr'] = args.min_lr
 
         # train
         accuracy, loss = train(args, model, device, train_loader, optimizer, epoch)
