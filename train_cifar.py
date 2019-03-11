@@ -67,9 +67,9 @@ def train(args, model, device, train_loader, optimizer, epoch):
         # update params
         _loss, _pred = optimizer.step(closure)
         if isinstance(optimizer, VOGN):
-            c, l = softmax_predictive_accuracy(_pred, target, ret_loss=True)
+            c = softmax_predictive_accuracy(_pred, target, ret_loss=False)
             total_correct += c
-            loss += l
+            loss += _loss * data.shape[0]
         else:
             _pred = _pred.argmax(dim=1, keepdim=True)
             total_correct += _pred.eq(target.view_as(_pred)).sum().item()
