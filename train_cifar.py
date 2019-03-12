@@ -18,16 +18,16 @@ OPTIMIZER_SGD = 'sgd'
 
 LR_SCHEDULE_CONSTANT = 'constant'
 LR_SCHEDULE_EXPONENTIAL = 'exponential'
+LR_SCHEDULE_SCHEDULE = 'schedule'
 
 def softmax_predictive_accuracy(logits_list, y, ret_loss = False):
-    probs_list = [torch.softmax(logits, dim=1) for logits in logits_list]
+    probs_list = [F.log_softmax(logits, dim=1) for logits in logits_list]
     probs_tensor = torch.stack(probs_list, dim = 2)
     probs = torch.mean(probs_tensor, dim=2)
     if ret_loss:
-        loss = F.cross_entropy(probs, y, reduction='sum').item()
+        loss = F.nll_loss(probs, y, reduction='sum').item()
     _, pred_class = torch.max(probs, 1)
-    correct = (pred_class == y)
-    correct = correct.float().sum()
+    correct = pred_class.eq(y.view_as(pred_class)).sum().item()
     if ret_loss:
         return correct, loss
     return correct
@@ -51,8 +51,6 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 optimizer.zero_grad()
                 output = model(data)
                 loss = F.cross_entropy(output, target)
-                #pred = torch.softmax(output, dim=1)
-                #correct = pred.eq(target.view_as(pred)).sum().item()
                 return loss, output
         else:
             def closure():
@@ -60,20 +58,17 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 output = model(data)
                 loss = F.cross_entropy(output, target)
                 loss.backward()
-                #pred = torch.softmax(output)
-                #correct = pred.eq(target.view_as(pred)).sum().item()
                 return loss, output
 
         # update params
         _loss, _pred = optimizer.step(closure)
         if isinstance(optimizer, VOGN):
-            c, l = softmax_predictive_accuracy(_pred, target, ret_loss=True)
-            total_correct += c
-            loss += l
+            total_correct += softmax_predictive_accuracy(_pred, target)
+
         else:
             _pred = _pred.argmax(dim=1, keepdim=True)
             total_correct += _pred.eq(target.view_as(_pred)).sum().item()
-            loss += _loss * data.shape[0]
+        loss += _loss * data.shape[0]
 
         iteration = base_num_iter + batch_idx + 1
 

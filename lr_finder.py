@@ -1,9 +1,22 @@
 from __future__ import print_function, with_statement, division
 import torch
+import torch.nn.functional as F
 from tqdm.autonotebook import tqdm
 from torch.optim.lr_scheduler import _LRScheduler
 import matplotlib.pyplot as plt
 
+def softmax_predictive_accuracy(logits_list, y, ret_loss = False):
+    probs_list = [F.log_softmax(logits, dim=1) for logits in logits_list]
+    probs_tensor = torch.stack(probs_list, dim = 2)
+    probs = torch.mean(probs_tensor, dim=2)
+    if ret_loss:
+        loss = F.nll_loss(probs, y, reduction='sum').item()
+    _, pred_class = torch.max(probs, 1)
+    correct = (pred_class == y)
+    correct = correct.float().sum()
+    if ret_loss:
+        return correct, loss
+    return correct
 
 class LRFinder(object):
     """Learning rate range test.
@@ -160,9 +173,10 @@ class LRFinder(object):
             loss = self.criterion(outputs, labels)
             return loss, outputs
         # Backward pass
-        loss, _ = self.optimizer.step(closure)
+        loss, outputs = self.optimizer.step(closure)
+        _, loss = softmax_predictive_accuracy(outputs, labels, ret_loss=True)
         #print(loss, self.optimizer.param_groups[0]['lr'], self.optimizer.state['Precision'])
-        return loss.item()
+        return loss
 
     def _validate(self, dataloader):
         # Set model to evaluation mode and disable gradient computation

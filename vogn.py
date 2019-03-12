@@ -197,7 +197,7 @@ class VOGN(Optimizer):
         Precision = Precision.mul(defaults['beta2']) + GGN_hat.add(defaults['prior_prec']).mul(1 - defaults['beta2'])
         self.state['Precision'] = Precision
         # Update mean vector
-        mu.addcdiv_(-defaults['lr'], self.state['mu_grad_avg'] + torch.mul(mu, defaults['prior_prec']), Precision)
+        mu.addcdiv_(-self.param_groups[0]['lr'], self.state['mu_grad_avg'] + torch.mul(mu, defaults['prior_prec']), Precision)
         self.state['mu'] = mu
         vector_to_parameters(self.state['mu'], self.param_groups[0]['params'])
         return loss, pred_list
