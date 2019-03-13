@@ -254,7 +254,7 @@ def main():
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     torch.manual_seed(args.seed)
-
+    args.log_file_name = '{}_{}_{}'.format(args.arch, args.dataset,args.optimizer)
     # Load Dataset
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     data = Dataset(args.dataset)
