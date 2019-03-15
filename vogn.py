@@ -15,7 +15,6 @@ def update_input(self, input, output):
     self.input = input[0].data
     self.output = output
 
-
 class VOGN(Optimizer):
     """Implements the VOGN algorithm. It uses the Generalized Gauss Newton (GGN)
         approximation to the Hessian and a mean-field approximation. Note that this
@@ -64,9 +63,9 @@ class VOGN(Optimizer):
         p = parameters_to_vector(self.param_groups[0]['params'])
         # mean parameter of variational distribution.
         self.state['mu'] = p.clone().detach()
-        self.state['mu_grad_avg'] = torch.zeros_like(p)
+        self.state['mu_grad_avg'] = torch.zeros_like(p).detach()
         # covariance parameter of variational distribution -- saved as the diagonal precision matrix.
-        self.state['Precision'] = torch.ones_like(p).mul_(defaults['prec_init'])
+        self.state['Precision'] = torch.ones_like(p).mul_(defaults['prec_init']).detach()
 
     def set_train_modules(self, module):
         if len(list(module.children())) == 0:
@@ -118,8 +117,8 @@ class VOGN(Optimizer):
             grad = []
             N = 1
             for i, module in enumerate(self.train_modules):
-                G = linear_grad[i]
-                A = module.input.clone().detach()
+                G = linear_grad[i].detach()
+                A = module.input.detach()
                 M = A.shape[0]
                 A = torch.cat([A] * N)
                 G *= M
@@ -127,28 +126,28 @@ class VOGN(Optimizer):
 
                 if isinstance(module, nn.BatchNorm1d):
                     A2 = torch.mul(A, A)
-                    grad.append(torch.einsum('ij->j', torch.mul(G, A)))
-                    ggn.append(torch.einsum('ij->j', torch.mul(G2, A2)))
+                    grad.append(torch.einsum('ij->j', torch.mul(G, A)).detach())
+                    ggn.append(torch.einsum('ij->j', torch.mul(G2, A2)).detach())
                     if module.bias is not None:
-                        grad.append(torch.einsum('ij->j', G))
-                        ggn.append(torch.einsum('ij->j', G2))
+                        grad.append(torch.einsum('ij->j', G).detach())
+                        ggn.append(torch.einsum('ij->j', G2).detach())
 
                 if isinstance(module, nn.BatchNorm2d):
                     A2 = torch.mul(A, A)
-                    grad.append(torch.einsum('ijkl->j', torch.mul(G, A)))
-                    ggn.append(torch.einsum('ijkl->j', torch.mul(G2, A2)))
+                    grad.append(torch.einsum('ijkl->j', torch.mul(G, A)).detach())
+                    ggn.append(torch.einsum('ijkl->j', torch.mul(G2, A2)).detach())
                     if module.bias is not None:
-                        grad.append(torch.einsum('ijkl->j', G))
-                        ggn.append(torch.einsum('ijkl->j', G2))
+                        grad.append(torch.einsum('ijkl->j', G).detach())
+                        ggn.append(torch.einsum('ijkl->j', G2).detach())
 
                 if isinstance(module, nn.Linear):
                     A2 = torch.mul(A, A)
-                    grad.append(torch.einsum('ij,ik->jk', G, A))
-                    ggn.append(torch.einsum('ij, ik->jk', G2, A2))
+                    grad.append(torch.einsum('ij,ik->jk', G, A).detach())
+                    ggn.append(torch.einsum('ij, ik->jk', G2, A2).detach())
                     if module.bias is not None:
                         # A = torch.ones((M * N, 1), device=A.device)
-                        grad.append(torch.einsum('ij->j', G))
-                        ggn.append(torch.einsum('ij->j', G2))
+                        grad.append(torch.einsum('ij->j', G).detach())
+                        ggn.append(torch.einsum('ij->j', G2).detach())
 
                 if isinstance(module, nn.Conv2d):
                     A = F.unfold(A, kernel_size=module.kernel_size, dilation=module.dilation, padding=module.padding,
@@ -162,18 +161,18 @@ class VOGN(Optimizer):
                     _, c, _, _ = G.shape
                     G = G.view(M * N, c, -1)
                     G2 = G2.view(M * N, c, -1)
-                    grad.append(torch.einsum('ijl,ikl->jk', G, A))
+                    grad.append(torch.einsum('ijl,ikl->jk', G, A).detach())
                     '''mean = torch.zeros((c, k), device=A.device)
                     mean.addbmm_(torch.mul(G, G), torch.mul(A, A))'''
-                    ggn.append(torch.einsum('ijl,ikl->jk', G2, A2))
+                    ggn.append(torch.einsum('ijl,ikl->jk', G2, A2).detach())
                     if module.bias is not None:
                         # A = torch.ones((M * N, 1, hw), device=A.device)
                         '''mean = torch.zeros((c, 1), device=A.device)
                         mean.addbmm_(G, A)'''
-                        grad.append(torch.einsum('ijl->j', G))
+                        grad.append(torch.einsum('ijl->j', G).detach())
                         '''mean = torch.zeros((c, 1), device=A.device)
                         mean.addbmm_(torch.mul(G, G), torch.mul(A, A))'''
-                        ggn.append(torch.einsum('ijl->j', G2))
+                        ggn.append(torch.einsum('ijl->j', G2).detach())
             grad_vec = parameters_to_vector(grad).div(M).detach()
             ggn = parameters_to_vector(ggn).div(M).detach()
 
