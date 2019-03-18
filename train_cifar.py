@@ -18,7 +18,7 @@ OPTIMIZER_SGD = 'sgd'
 
 LR_SCHEDULE_CONSTANT = 'constant'
 LR_SCHEDULE_EXPONENTIAL = 'exponential'
-LR_SCHEDULE_SCHEDULE = 'schedule'
+LR_SCHEDULE_FIXED = 'schedule'
 
 def softmax_predictive_accuracy(logits_list, y, ret_loss = False):
     probs_list = [F.log_softmax(logits, dim=1) for logits in logits_list]
@@ -196,8 +196,11 @@ def main():
                         help='learning rate')
     parser.add_argument('--lr_scheduler', type=str, default='constant',
                         help='learning rate scheduler')
+    parser.add_argument('--schedule', type=int, nargs='+', default=[150, 225],
+                        help='Decrease learning rate at these epochs.')
     parser.add_argument('--clip_lr', action='store_true', default=False,
                         help='Set the min lr with exponential decay')
+    parser.add_argument('--gamma', type=float, default=0.1, help='LR is multiplied by gamma on schedule.')
     parser.add_argument('--min_lr', type=float, default=0.001,
                         help='Min. learning rate for exponential or cyclic decay')
     parser.add_argument('--exponential_decay_rate', type=float, default=0.9,
@@ -322,6 +325,8 @@ def main():
     elif args.lr_scheduler == LR_SCHEDULE_EXPONENTIAL:
         scheduler = optim.lr_scheduler.ExponentialLR(
             optimizer, gamma=args.exponential_decay_rate)
+    elif args.lr_scheduler == LR_SCHEDULE_FIXED:
+        scheduler = None
     else:
         raise ValueError
 
@@ -362,6 +367,10 @@ def main():
             scheduler.step(epoch - 1)
             if args.clip_lr and optimizer.param_groups[0]['lr'] < args.min_lr:
                 optimizer.param_groups[0]['lr'] = args.min_lr
+
+        if args.lr_scheduler == LR_SCHEDULE_FIXED and epoch in args.schedule:
+            optimizer.param_groups[0]['lr'] *= args.gamma
+
 
         # train
         accuracy, loss = train(args, model, device, train_loader, optimizer, epoch)

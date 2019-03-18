@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from tqdm.autonotebook import tqdm
 from torch.optim.lr_scheduler import _LRScheduler
 import matplotlib.pyplot as plt
+from vogn import VOGN
 
 def softmax_predictive_accuracy(logits_list, y, ret_loss = False):
     probs_list = [F.log_softmax(logits, dim=1) for logits in logits_list]
@@ -174,8 +175,9 @@ class LRFinder(object):
             return loss, outputs
         # Backward pass
         loss, outputs = self.optimizer.step(closure)
-        _, loss = softmax_predictive_accuracy(outputs, labels, ret_loss=True)
-        #print(loss, self.optimizer.param_groups[0]['lr'], self.optimizer.state['Precision'])
+        if isinstance(self.optimizer, VOGN):
+            return loss
+        loss = loss.detach().item()
         return loss
 
     def _validate(self, dataloader):
