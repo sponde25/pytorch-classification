@@ -369,7 +369,8 @@ def main():
                 optimizer.param_groups[0]['lr'] = args.min_lr
 
         if args.lr_scheduler == LR_SCHEDULE_FIXED and epoch in args.schedule:
-            optimizer.param_groups[0]['lr'] *= args.gamma
+            for param_group in optimizer.param_groups:
+                param_group['lr'] *= args.gamma
 
 
         # train
