@@ -11,6 +11,7 @@ import torch.nn.functional as F
 import models.cifar as models
 from datasets import Dataset
 from vogn import VOGN
+import torch.backends.cudnn as cudnn
 
 OPTIMIZER_VOGN = 'vogn'
 OPTIMIZER_ADAM = 'adam'
@@ -306,6 +307,7 @@ def main():
     else:
         model = models.__dict__[args.arch](num_classes=num_classes)
     model = model.to(device)
+    cudnn.benchmark = True
 
     # Setup optimizer
     if args.optimizer == OPTIMIZER_VOGN:
