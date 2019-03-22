@@ -362,6 +362,7 @@ def main():
     print('===========================')
 
     # Training
+    best_acc = 0.
     for epoch in range(1, args.epochs + 1):
 
         # update learning rate
@@ -384,11 +385,13 @@ def main():
         with open(path, 'a') as f:
             f.write(log + '\n')
 
-    if args.save_model:
-        path_model = os.path.join(args.out, '{}.pt'.format(args.log_file_name))
-        path_optim = os.path.join(args.out, '{}.opt'.format(args.log_file_name))
-        torch.save(model.state_dict(), path_model)
-        torch.save(optimizer.state, path_optim)
+        if args.save_model and best_acc < test_accuracy:
+            best_acc = test_accuracy
+            path_model = os.path.join(args.out, '{}.pt'.format(args.log_file_name))
+            path_optim = os.path.join(args.out, '{}.opt'.format(args.log_file_name))
+            torch.save(model.state_dict(), path_model)
+            if isinstance(optimizer, VOGN):
+                torch.save(optimizer.state, path_optim)
 
 
 if __name__ == '__main__':
