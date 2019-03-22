@@ -328,7 +328,7 @@ def main():
         scheduler = optim.lr_scheduler.ExponentialLR(
             optimizer, gamma=args.exponential_decay_rate)
     elif args.lr_scheduler == LR_SCHEDULE_FIXED:
-        scheduler = None
+        scheduler = optim.lr_scheduler.MultiStepLR(optimizer, args.schedule, gamma=args.gamma)
     else:
         raise ValueError
 
@@ -367,13 +367,6 @@ def main():
         # update learning rate
         if scheduler is not None:
             scheduler.step(epoch - 1)
-            if args.clip_lr and optimizer.param_groups[0]['lr'] < args.min_lr:
-                optimizer.param_groups[0]['lr'] = args.min_lr
-
-        if args.lr_scheduler == LR_SCHEDULE_FIXED and epoch in args.schedule:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= args.gamma
-
 
         # train
         accuracy, loss = train(args, model, device, train_loader, optimizer, epoch)
