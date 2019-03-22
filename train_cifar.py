@@ -181,7 +181,8 @@ def main():
     parser.add_argument('--widen-factor', type=int, default=4, help='Widen factor. 4 -> 64, 8 -> 128, ...')
     parser.add_argument('--growthRate', type=int, default=12, help='Growth rate for DenseNet.')
     parser.add_argument('--compressionRate', type=int, default=2, help='Compression Rate (theta) for DenseNet.')
-
+    parser.add_argument('--drop', '--dropout', default=0, type=float,
+                        metavar='Dropout', help='Dropout ratio')
     # Training Settings
     parser.add_argument('--optimizer', type=str, default=OPTIMIZER_VOGN,
                         help='name of the optimizer')
