@@ -12,6 +12,18 @@ class Dataset():
     def __init__(self, data_set, data_folder=DEFAULT_DATA_FOLDER):
         super(type(self), self).__init__()
 
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+
         if data_set == 'binary':
             X1 = torch.randn(1000, 50)
             X2 = torch.randn(1000, 50) + 1.5
@@ -46,22 +58,14 @@ class Dataset():
 
         if data_set == 'cifar10':
             # print(type(self.composed_transforms))
-            train_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
-            test_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
             self.train_set = dset.CIFAR10(root=data_folder + '/' + data_set,
                                           train=True,
-                                          transform=train_transform,
+                                          transform=transform_train,
                                           download=True)
 
             self.test_set = dset.CIFAR10(root=data_folder + '/' + data_set,
                                          train=False,
-                                         transform=test_transform)
+                                         transform=transform_test)
 
         if data_set == 'kmnist':
             self.train_set = dset.KMNIST(root=data_folder + '/' + data_set,
@@ -74,22 +78,15 @@ class Dataset():
                                               transform=transforms.ToTensor())
 
         if data_set == 'cifar100':
-            train_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
-            test_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
+
             self.train_set = dset.CIFAR100(root=data_folder,
                                           train=True,
-                                          transform=train_transform,
+                                          transform=transform_train,
                                           download=False)
 
             self.test_set = dset.CIFAR100(root=data_folder,
                                          train=False,
-                                         transform=test_transform)
+                                         transform=transform_test)
 
     def get_train_size(self):
         return len(self.train_set)
