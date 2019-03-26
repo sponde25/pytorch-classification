@@ -23,6 +23,23 @@ class Dataset():
             transforms.ToTensor(),
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
+        mnist_train = transforms.Compose([
+            transforms.Resize((32, 32)),
+            transforms.RandomCrop(32, padding=4),
+            # transforms.RandomHorizontalFlip(),
+            # CIFAR10Policy(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+        ])  # meanstd transformation
+
+        mnist_test = transforms.Compose([
+            transforms.Resize((32, 32)),
+            transforms.RandomCrop(32, padding=4),
+            # transforms.RandomHorizontalFlip(),
+            # CIFAR10Policy(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+        ])
 
         if data_set == 'binary':
             X1 = torch.randn(1000, 50)
@@ -36,25 +53,26 @@ class Dataset():
 
         if data_set == 'mnist':
             # self.composed_transforms = transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])
+
             self.train_set = dset.MNIST(root=data_folder + '/' + data_set,
                                         train=True,
-                                        transform=transforms.ToTensor(),
+                                        transform=mnist_train,
                                         download=True)
 
             self.test_set = dset.MNIST(root=data_folder + '/' + data_set,
                                        train=False,
-                                       transform=transforms.ToTensor())
+                                       transform=mnist_test)
 
         if data_set == 'fmnist':
             # self.composed_transforms = transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])
             self.train_set = dset.FashionMNIST(root=data_folder + '/' + data_set,
                                                train=True,
-                                               transform=transforms.ToTensor(),
+                                               transform=mnist_train,
                                                download=True)
 
             self.test_set = dset.FashionMNIST(root=data_folder + '/' + data_set,
                                               train=False,
-                                              transform=transforms.ToTensor())
+                                              transform=mnist_test)
 
         if data_set == 'cifar10':
             # print(type(self.composed_transforms))
@@ -70,12 +88,12 @@ class Dataset():
         if data_set == 'kmnist':
             self.train_set = dset.KMNIST(root=data_folder + '/' + data_set,
                                                train=True,
-                                               transform=transforms.ToTensor(),
+                                               transform=mnist_train,
                                                download=True)
 
             self.test_set = dset.KMNIST(root=data_folder + '/' + data_set,
                                               train=False,
-                                              transform=transforms.ToTensor())
+                                              transform=mnist_test)
 
         if data_set == 'cifar100':
 
