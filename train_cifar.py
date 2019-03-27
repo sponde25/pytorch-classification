@@ -182,6 +182,7 @@ def main():
                              ' | '.join(model_names) +
                              ' (default: resnet18)')
     parser.add_argument('--input_dim', type=int, default=32, help='Input Dimensions')
+    parser.add_argument('--units', type=int, default=400, help='Units in MLP hidden layer')
     parser.add_argument('--channels', type=int, default=3, help='Input Channels')
     parser.add_argument('--depth', type=int, default=20, help='Model depth.')
     parser.add_argument('--block-name', type=str, default='BasicBlock',
@@ -315,6 +316,11 @@ def main():
             input_channels = args.channels,
             dims = args.input_dim,
             num_classes = num_classes
+        )
+    elif args.arch.startswith('mlp'):
+        model = models.__dict__[args.arch](
+            units=args.units,
+            num_classes=num_classes
         )
     else:
         model = models.__dict__[args.arch](num_classes=num_classes)

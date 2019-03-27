@@ -70,3 +70,4 @@ from .wrn import *
 from .preresnet import *
 from .densenet import *
 from .lenet5 import *
+from .MLP import *
