@@ -69,7 +69,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
         else:
             _pred = _pred.argmax(dim=1, keepdim=True)
             total_correct += _pred.eq(target.view_as(_pred)).sum().item()
-        loss += _loss * data.shape[0]
+        loss += _loss.detach() * data.shape[0]
 
         iteration = base_num_iter + batch_idx + 1
 
@@ -144,6 +144,15 @@ def test(args, model, device, test_loader, optimzer=None):
                 total_correct += correct
                 test_loss += loss
 
+            elif args.mc_dropout:
+                model.train()
+                outputs = []
+                for mc_sample in range(args.test_mc_samples):
+                    outputs.append(model(data))
+                correct, loss = softmax_predictive_accuracy(outputs, target, ret_loss=True)
+                total_correct += correct
+                test_loss += loss
+
             else:
                 output = model(data)
                 test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
@@ -193,6 +202,8 @@ def main():
                         help='input batch size for training (default:128)')
     parser.add_argument('--test_batch_size', type=int, default=1000,
                         help='input batch size for testing (default: 1000)')
+    parser.add_argument('--mc_dropout', action='store_true', default=False,
+                        help='for using MC-Dropout')
     # Hyper-parameters
     parser.add_argument('--lr', type=float, default=0.01,
                         help='learning rate')

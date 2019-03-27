@@ -34,24 +34,24 @@ class LeNet5(nn.Module):
         return out
 
 class LeNet5Drop(nn.Module):
-    def __init__(self, input_channels = 3, dims = 32, num_classes=10):
+    def __init__(self, input_channels = 3, dims = 32, num_classes=10, drop=0.5):
         super(type(self), self).__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(input_channels, 6, 5),
             nn.ReLU(),
-            nn.Dropout2d(0.2),
+            nn.Dropout2d(drop),
             nn.MaxPool2d(2)
         )
         dims = int((dims-4)/2)
         self.layer2 = nn.Sequential(
             nn.Conv2d(6, 16, 5),
             nn.ReLU(),
-            nn.Dropout2d(0.2),
+            nn.Dropout2d(drop),
             nn.MaxPool2d(2)
         )
         dims = int((dims-4)/2)
         self.fc1 = nn.Linear(16*dims*dims, 120)
-        self.dp = nn.Dropout(0.2)
+        self.dp = nn.Dropout(drop)
         self.fc2 = nn.Linear(120, 84)
         self.fc = nn.Linear(84, num_classes)
 

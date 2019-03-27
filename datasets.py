@@ -24,21 +24,11 @@ class Dataset():
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
         mnist_train = transforms.Compose([
-            transforms.Resize((32, 32)),
-            transforms.RandomCrop(32, padding=4),
-            # transforms.RandomHorizontalFlip(),
-            # CIFAR10Policy(),
             transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,)),
         ])  # meanstd transformation
 
         mnist_test = transforms.Compose([
-            transforms.Resize((32, 32)),
-            transforms.RandomCrop(32, padding=4),
-            # transforms.RandomHorizontalFlip(),
-            # CIFAR10Policy(),
             transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,)),
         ])
 
         if data_set == 'binary':
