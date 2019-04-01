@@ -8,13 +8,13 @@ class MLP(nn.Module):
         super(type(self), self).__init__()
         self.fc1 = nn.Linear(784, units)
         self.fc2 = nn.Linear(units, units)
-        self.fc3 = nn.Linear(units, num_classes)
+        self.fc = nn.Linear(units, num_classes)
 
     def forward(self, x):
         x = x.view(x.shape[0], -1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.fc(x)
         return x
 
 class MLPBN(nn.Module):
