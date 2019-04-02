@@ -282,7 +282,7 @@ def test_ensemble():
             loss += _l
     return correct, loss / TEST_SIZE
 
-net = BayesianNetwork().to(DEVICE)
+net = BayesianLeNet5().to(DEVICE)
 optimizer = optim.Adam(net.parameters())
 test_correct, test_loss = [], []
 best_correct = 0.
@@ -293,7 +293,7 @@ for epoch in range(TRAIN_EPOCHS):
     test_loss.append(_l)
     print('Test Correct: {}/{}, Test Loss: {}'.format(_c, TEST_SIZE, _l))
     if best_correct < _c:
-        torch.save(net.state_dict(), 'bbb400_mnist.pt')
+        torch.save(net.state_dict(), 'lenet5_mnist.pt')
 
-torch.save(test_correct, 'bbb400_mnist_correct.arr')
-torch.save(test_loss, 'bbb400_mnist_loss.arr')
+torch.save(test_correct, 'lenet5_mnist_correct.arr')
+torch.save(test_loss, 'lenet5_mnist_loss.arr')
