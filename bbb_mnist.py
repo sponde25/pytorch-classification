@@ -293,6 +293,7 @@ for epoch in range(TRAIN_EPOCHS):
     test_loss.append(_l)
     print('Test Correct: {}/{}, Test Loss: {}'.format(_c, TEST_SIZE, _l))
     if best_correct < _c:
+        best_correct = _c
         torch.save(net.state_dict(), 'bbb400_mnist.pt')
 
 torch.save(test_correct, 'bbb400_mnist_correct.arr')
