@@ -9,7 +9,7 @@ DEFAULT_DATA_FOLDER = './data'
 
 
 class Dataset():
-    def __init__(self, data_set, data_folder=DEFAULT_DATA_FOLDER):
+    def __init__(self, data_set, data_folder=DEFAULT_DATA_FOLDER, cifar_pre_process=False):
         super(type(self), self).__init__()
 
         transform_train = transforms.Compose([
@@ -66,6 +66,8 @@ class Dataset():
 
         if data_set == 'cifar10':
             # print(type(self.composed_transforms))
+            if cifar_pre_process:
+                transform_train = transform_test
             self.train_set = dset.CIFAR10(root=data_folder + '/' + data_set,
                                           train=True,
                                           transform=transform_train,
@@ -86,7 +88,8 @@ class Dataset():
                                               transform=mnist_test)
 
         if data_set == 'cifar100':
-
+            if not cifar_pre_process:
+                transform_train = transform_test
             self.train_set = dset.CIFAR100(root=data_folder,
                                           train=True,
                                           transform=transform_train,

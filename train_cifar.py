@@ -199,6 +199,8 @@ def main():
     parser.add_argument('--epochs', type=int, default=10,
                         help='number of epochs to train (default: 10)')
     parser.add_argument('-d', '--dataset', default='cifar10', type=str)
+    parser.add_argument('--cifar_pre_process', action='store_true', default=False,
+                        help='Turn the pre-processing for CIFAR off')
     parser.add_argument('--batch_size', type=int, default=128,
                         help='input batch size for training (default:128)')
     parser.add_argument('--test_batch_size', type=int, default=1000,
@@ -271,11 +273,12 @@ def main():
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     torch.manual_seed(args.seed)
+    args.vogn_log_file_name = args.log_file_name + '.vogn'
     if args.log_file_name == 'log':
         args.log_file_name = '{}_{}_{}'.format(args.arch, args.dataset,args.optimizer)
     # Load Dataset
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-    data = Dataset(args.dataset)
+    data = Dataset(args.dataset, cifar_pre_process=args.cifar_pre_process)
     train_loader = data.get_train_loader(batch_size=args.batch_size, shuffle=True)
     test_loader = data.get_test_loader(batch_size=args.test_batch_size, shuffle=True)
     num_classes = 10
