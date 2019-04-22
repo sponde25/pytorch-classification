@@ -167,6 +167,29 @@ def test(args, model, device, test_loader, optimzer=None):
 
     return test_accuracy, test_loss
 
+def test_ensemble(args, models, device, test_loader, optimzers=None):
+
+    test_loss = 0
+    total_correct = 0
+
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            outputs = []
+            for model in models:
+                outputs.append(model(data))
+            correct, loss = softmax_predictive_accuracy(outputs, target, ret_loss=True)
+            total_correct += correct
+            test_loss += loss
+
+    test_loss /= len(test_loader.dataset)
+    test_accuracy = 100. * total_correct / len(test_loader.dataset)
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {:.0f}/{} ({:.2f}%)\n'.format(
+        test_loss, total_correct, len(test_loader.dataset), test_accuracy))
+
+    return test_accuracy, test_loss
+
 
 def main():
     model_names = sorted(name for name in models.__dict__
@@ -193,6 +216,8 @@ def main():
     parser.add_argument('--compressionRate', type=int, default=2, help='Compression Rate (theta) for DenseNet.')
     parser.add_argument('--drop', '--dropout', default=0, type=float,
                         metavar='Dropout', help='Dropout ratio')
+    parser.add_argument('--ensemble', action='store_true', default=False,
+                        help='Use esemble ')
     # Training Settings
     parser.add_argument('--optimizer', type=str, default=OPTIMIZER_VOGN,
                         help='name of the optimizer')
@@ -314,6 +339,14 @@ def main():
             depth=args.depth,
             block_name=args.block_name,
         )
+    elif args.arch.startswith('lenet') and args.ensemble:
+        model_ensemble = []
+        for _ in range(5):
+            model_ensemble.append(models.__dict__[args.arch](
+                input_channels = args.channels,
+                dims = args.input_dim,
+                num_classes = num_classes
+            ))
     elif args.arch.startswith('lenet'):
         model = models.__dict__[args.arch](
             input_channels = args.channels,
@@ -327,11 +360,20 @@ def main():
         )
     else:
         model = models.__dict__[args.arch](num_classes=num_classes)
-    model = model.to(device)
+
+    if args.ensemble:
+        for model in model_ensemble:
+            model = model.to(device)
+    else:
+        model = model.to(device)
     cudnn.benchmark = True
 
     # Setup optimizer
-    if args.optimizer == OPTIMIZER_VOGN:
+    if args.ensemble:
+        optimizers = []
+        for model in model_ensemble:
+            optimizers.append(optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2)))
+    elif args.optimizer == OPTIMIZER_VOGN:
         optimizer = VOGN(model, train_set_size=len(train_loader.dataset),
                          lr=args.lr, beta1=args.beta1, beta2=args.beta2,
                          prec_init=args.prec_init, prior_prec=args.prior_prec,
@@ -390,10 +432,22 @@ def main():
             scheduler.step(epoch - 1)
 
         # train
-        accuracy, loss = train(args, model, device, train_loader, optimizer, epoch)
+        accuracy, loss = 0,0
+        test_accuracy, test_loss = 0,0
+        if args.ensemble:
+            for model, optimizer in zip(model_ensemble, optimizers):
+                _accuracy, _loss = train(args, model, device, train_loader, optimizer, epoch)
+                accuracy += _accuracy
+                loss += _loss
+
+        else:
+            accuracy, loss = train(args, model, device, train_loader, optimizer, epoch)
 
         # test
-        test_accuracy, test_loss = test(args, model, device, test_loader, optimizer)
+        if args.ensemble:
+            test_accuracy, test_loss = test_ensemble(args, model_ensemble, device, test_loader, optimizers)
+        else:
+            test_accuracy, test_loss = test(args, model, device, test_loader, optimizer)
 
         iteration = epoch * len(train_loader)
         log = 'epoch,{},iteration,{},' \
@@ -408,9 +462,15 @@ def main():
     if args.save_model:
         path_model = os.path.join(args.out, '{}.pt'.format(args.log_file_name))
         path_optim = os.path.join(args.out, '{}.opt'.format(args.log_file_name))
-        torch.save(model.state_dict(), path_model)
-        if isinstance(optimizer, VOGN):
-            torch.save(optimizer.state, path_optim)
+        if args.ensemble:
+            model_state_ensemble = []
+            for model in model_ensemble:
+                model_state_ensemble.append(model.state_dict())
+            torch.save(model_state_ensemble, path_model)
+        else:
+            torch.save(model.state_dict(), path_model)
+            if isinstance(optimizer, VOGN):
+                torch.save(optimizer.state, path_optim)
 
 
 if __name__ == '__main__':
